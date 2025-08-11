@@ -46,8 +46,6 @@ func fromArray(in js.Value) []byte {
       out[i] = byte(in.Index(i).Int())
    }
 
-   fmt.Printf("a[%d]:%s\n", len(out), out)
-
    return out
 }
 
@@ -63,7 +61,7 @@ func NewCert() js.Func {
       var err error
 
       if len(args) != 0 && len(args) != 2 {
-         fmt.Printf("%s %d\n", InvNumArg, len(args))
+         //fmt.Printf("%s %d\n", InvNumArg, len(args))
          return []interface{}{ nil, InvNumArg.Error()}
       }
 
@@ -73,25 +71,21 @@ func NewCert() js.Func {
       jsPk = js.ValueOf(map[string]interface{}{})
       jsPk.Set("status", js.ValueOf(0))
 
-      fmt.Printf("---0\n")
 
       if len(args) != 0  && !args[0].IsUndefined() && !args[1].IsUndefined() && !args[0].IsNull() && !args[1].IsNull() {
          email = args[0].String()
          pw = args[1].String()
-         fmt.Printf("---%s:%s\n", email, pw)
 
          wPk = ls.Call("getItem","wasmcert." + args[0].String() + ".Pk")
 
-         fmt.Printf("---%#v\n", wPk)
          if !wPk.IsUndefined() && !wPk.IsNull() {
-            fmt.Printf("---2\n")
             err = pk.NewPemKeyFromMemory([]byte(wPk.String()),pw)
             if err != nil {
                return []interface{}{ nil, err.Error()}
             }
 
             wCert = ls.Call("getItem","wasmcert." + email + ".Cert")
-            fmt.Printf("wCert: %s\n", wCert.String())
+//            fmt.Printf("wCert: %s\n", wCert.String())
             if !wCert.IsUndefined() && !wCert.IsNull() {
                err = pk.NewPemCertFromMemory([]byte(wCert.String()))
                if err != nil {
@@ -104,7 +98,7 @@ func NewCert() js.Func {
                   jsPk.Set("status", js.ValueOf(1))
                }
 
-               fmt.Printf("%#v\n", pk.Cert)
+//               fmt.Printf("%#v\n", pk.Cert)
                jsPk.Set("keyId", js.ValueOf(fmt.Sprintf("%2X", pk.Cert.SubjectKeyId)))
             }
          }
@@ -112,7 +106,6 @@ func NewCert() js.Func {
 
       jsPk.Set("ValidateRegister",js.FuncOf(func(this js.Value, args []js.Value) interface{} {
          if len(args) != 0 {
-            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 
@@ -130,7 +123,6 @@ func NewCert() js.Func {
          var pembuf []byte
 
          if len(args) != 3 {
-            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 
@@ -141,13 +133,13 @@ func NewCert() js.Func {
 
          der, err = pk.GenerateClientCSR(name, email)
          if err != nil {
-            fmt.Printf("Generation of certificate request has failed (%s)\n", err)
+//            fmt.Printf("Generation of certificate request has failed (%s)\n", err)
             return []interface{}{nil, err.Error()}
          }
 
          pembuf, err = pk.PemKey(password)
          if err != nil {
-            fmt.Printf("PEM encoding has failed (%s)\n", err)
+//            fmt.Printf("PEM encoding has failed (%s)\n", err)
             return []interface{}{nil, err.Error()}
          }
 
@@ -164,7 +156,6 @@ func NewCert() js.Func {
          var b64Signature string
 
          if len(args) != 1 {
-            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 
@@ -173,14 +164,11 @@ func NewCert() js.Func {
             return []interface{}{nil, EmailNotReg.Error()}
          }
 
-         fmt.Printf("sign: %s\n", args[0].String())
          signature, err = pk.Sign(args[0].String())
          if err != nil {
-            fmt.Printf("Failed signing message (%s)\n", err)
+//            fmt.Printf("Failed signing message (%s)\n", err)
             return []interface{}{nil, err.Error()}
          }
-
-         fmt.Printf("signature: % 2X\n", signature)
 
          b64Signature = base64.StdEncoding.EncodeToString(signature)
 
@@ -192,13 +180,13 @@ func NewCert() js.Func {
          var signature []byte
 
          if len(args) != 2 {
-            fmt.Printf("Wrong parameters number\n", err)
+//            fmt.Printf("Wrong parameters number\n", err)
             return []interface{}{nil, err.Error()}
          }
 
          signature, err = base64.StdEncoding.DecodeString(args[1].String())
          if err != nil {
-            fmt.Printf("Failed decoding signature (%s)\n", err)
+//            fmt.Printf("Failed decoding signature (%s)\n", err)
             return []interface{}{nil, err.Error()}
          }
 
@@ -215,13 +203,13 @@ func NewCert() js.Func {
          var encrypted []byte
 
          if len(args) != 1 {
-            fmt.Printf("%s\n", InvNumArg)
+//            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 
          encrypted, err = pk.Encrypt([]byte(args[0].String()))
          if err != nil {
-            fmt.Printf("Failed encrypting message (%s)\n", err)
+//            fmt.Printf("Failed encrypting message (%s)\n", err)
             return []interface{}{nil, err.Error()}
          }
 
@@ -233,13 +221,13 @@ func NewCert() js.Func {
          var decrypted []byte
 
          if len(args) != 1 {
-            fmt.Printf("%s\n", InvNumArg)
+//            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 
          decrypted, err = pk.Decrypt(fromArray(args[0]))
          if err != nil {
-            fmt.Printf("Failed decrypting message (%s)\n", err)
+//            fmt.Printf("Failed decrypting message (%s)\n", err)
             return []interface{}{nil, err.Error()}
          }
 
@@ -253,7 +241,6 @@ func NewCert() js.Func {
          var challenge []byte
 
          if len(args) != 1 {
-            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 
@@ -264,13 +251,12 @@ func NewCert() js.Func {
 
          challenge, err = pk.Decrypt(fromArray(args[0]))
          if err != nil {
-            fmt.Printf("Failed decrypting challenge (%s)\n", err)
+//            fmt.Printf("Failed decrypting challenge (%s)\n", err)
             return []interface{}{nil, err.Error()}
          }
 
          img, err = pk.QrKeyId(fmt.Sprintf("%2X",pk.Cert.SubjectKeyId), challenge)
          if err != nil {
-            fmt.Printf("%s\n", err)
             return []interface{}{nil, err.Error()}
          }
 
@@ -286,45 +272,37 @@ func NewCert() js.Func {
          var dataURL *dataurl.DataURL
 
          if len(args) != 1 {
-            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 
-         fmt.Printf("S: [%s]\n", args[0].String())
-
          dataURL, err = dataurl.Decode(strings.NewReader(args[0].String()))
          if err != nil {
-            fmt.Printf("%s\n", err)
             return []interface{}{nil, err.Error()}
          }
 
          if dataURL.MediaType.ContentType() == "image/png" {
             img, err = png.Decode(bytes.NewReader(dataURL.Data))
             if err != nil {
-               fmt.Printf("%s\n", err)
                return []interface{}{nil, err.Error()}
             }
          } else if dataURL.MediaType.ContentType() == "image/jpeg" {
             img, err = jpeg.Decode(bytes.NewReader(dataURL.Data))
             if err != nil {
-               fmt.Printf("%s\n", err)
                return []interface{}{nil, err.Error()}
             }
          } else if dataURL.MediaType.ContentType() == "image/gif" {
             img, err = gif.Decode(bytes.NewReader(dataURL.Data))
             if err != nil {
-               fmt.Printf("%s\n", err)
                return []interface{}{nil, err.Error()}
             }
          } else {
-            fmt.Printf("Only PNG/JPEG/GIF QrCodes are supported!\n")
+//            fmt.Printf("Only PNG/JPEG/GIF QrCodes are supported!\n")
             return []interface{}{nil, "Only PNG/JPEG/GIF QrCodes are supported!\n"}
          }
 
          // prepare BinaryBitmap
          bmp, err = gozxing.NewBinaryBitmapFromImage(img)
          if err != nil {
-            fmt.Printf("%s\n", err)
             return []interface{}{nil, err.Error()}
          }
 
@@ -332,7 +310,6 @@ func NewCert() js.Func {
          qrReader = qrcode.NewQRCodeReader()
          result, err = qrReader.Decode(bmp, nil)
          if err != nil {
-            fmt.Printf("%s\n", err)
             return []interface{}{nil, err.Error()}
          }
 
@@ -346,29 +323,22 @@ func NewCert() js.Func {
          var qrImg []byte
 
          if len(args) != 1 {
-            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 
-         fmt.Printf("S: [%s]\n", args[0].String())
-
          data, err = base64.StdEncoding.DecodeString(args[0].String())
          if err != nil {
-            fmt.Printf("error: %s", err)
             return []interface{}{nil, err.Error()}
          }
 
          challenge, err = pk.Decrypt(data)
          if err != nil {
-            fmt.Printf("Failed decrypting challenge (%s)\n", err)
+//            fmt.Printf("Failed decrypting challenge (%s)\n", err)
             return []interface{}{nil, err.Error()}
          }
 
-         fmt.Printf("challenge (% 2X)\n", challenge)
-
          qrImg, err = pk.QrKeyId(fmt.Sprintf("%2X",pk.Cert.SubjectKeyId), challenge)
          if err != nil {
-            fmt.Printf("%s\n", err)
             return []interface{}{nil, err.Error()}
          }
 
@@ -377,7 +347,6 @@ func NewCert() js.Func {
 
       jsPk.Set("b64Encode",js.FuncOf(func(this js.Value, args []js.Value) interface{} {
          if len(args) != 1 {
-            fmt.Printf("%s\n", InvNumArg)
             return []interface{}{nil, InvNumArg.Error()}
          }
 

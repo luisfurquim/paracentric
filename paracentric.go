@@ -156,8 +156,6 @@ func (pk *PkiT) GenerateClient(asn1Data []byte) (*x509.Certificate, *rsa.PublicK
    }
    template.SubjectKeyId = []byte(ski)
 
-   Goose.Logf(0,"pub: %#v", csr.PublicKey)
-
    der, err = x509.CreateCertificate(rand.Reader, template, pk.Cert, csr.PublicKey, pk.PK)
    if err != nil {
       Goose.Logf(1,"%s: %s", CrtGenError, err)
@@ -258,7 +256,7 @@ func (pk *PkiT) NewPemKeyFromMemory(buf []byte, password string) error {
 
    buf2, _ = pem.Decode(buf)
    if buf2 == nil || buf2.Type != "RSA PRIVATE KEY" {
-      Goose.Logf(0,"%s", KeyReadError)
+      Goose.Logf(1,"%s", KeyReadError)
       return KeyReadError
    }
 
@@ -274,7 +272,7 @@ func (pk *PkiT) NewPemKeyFromMemory(buf []byte, password string) error {
    }
 
    if key, ok = pkInt.(*rsa.PrivateKey); !ok {
-      Goose.Logf(0,"Failed parsing key: %s (%#v)", KeyWrongTypeError, pkInt)
+      Goose.Logf(1,"Failed parsing key: %s (%#v)", KeyWrongTypeError, pkInt)
       return KeyWrongTypeError
    }
 
@@ -288,7 +286,7 @@ func (pk *PkiT) NewPemKeyFromReader(rd io.Reader, password string) error {
 
    buf, err = io.ReadAll(rd)
    if err != nil {
-      Goose.Logf(0,"Error reading key: %s", err)
+      Goose.Logf(1,"Error reading key: %s", err)
       return err
    }
 
@@ -394,9 +392,6 @@ func (pk *PkiT) Sign(msg string) ([]byte, error) {
    sum = sha256.Sum256([]byte(msg))
    msgDigest = sum[:]
 
-Goose.Logf(0,"pk.PK:[%#v]", pk.PK)
-Goose.Logf(0,"pk.PK.PublicKey:[%#v]", pk.PK.PublicKey)
-
    msgSignature, err = rsa.SignPSS(rand.Reader, pk.PK, crypto.SHA256, msgDigest, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthAuto})
    if err != nil {
       Goose.Logf(1,"Failed to sign: %s", err)
@@ -414,12 +409,9 @@ func (pk *PkiT) Verify(msg string, signature []byte) error {
 
    sum = sha256.Sum256([]byte(msg))
 
-   Goose.Logf(0,"pk.PK: [%#v]", pk.PK)
-   Goose.Logf(0,"pk.PK.PublicKey: [%#v]", pk.PK.PublicKey)
-
    err = rsa.VerifyPSS(&pk.PK.PublicKey, crypto.SHA256, sum[:], signature, nil)
    if err != nil {
-      Goose.Logf(0,"Error from verification: %s", err)
+      Goose.Logf(1,"Error from verification: %s", err)
       return err
    }
 
@@ -460,7 +452,7 @@ func (pk *PkiT) Decrypt(secret []byte) ([]byte, error) {
    for len(secret) > 0 {
       buf, err = rsa.DecryptOAEP(sha256.New(), rand.Reader, pk.PK, secret[:256], []byte{})
       if err != nil {
-         Goose.Logf(0,"Error from decryption: %s", err)
+         Goose.Logf(1,"Error from decryption: %s", err)
          return nil, err
       }
 
@@ -498,7 +490,7 @@ func (pk *PkiT) Challenge() ([]byte, []byte, error) {
    challenge = make([]byte, 128)
    _, err = rand.Read(challenge)
    if err != nil {
-      Goose.Logf(0,"Error creating challenge: %s", err)
+      Goose.Logf(1,"Error creating challenge: %s", err)
       return nil, nil, err
    }
 
@@ -514,14 +506,14 @@ func (pk *PkiT) Challenge() ([]byte, []byte, error) {
 
    encrypted, err = pk.Encrypt(challenge)
    if err != nil {
-      Goose.Logf(0,"Error encrypting challenge: %s", err)
+      Goose.Logf(1,"Error encrypting challenge: %s", err)
       return nil, nil, err
    }
 
    encoder = qrcode.NewQRCodeWriter()
    btmtrx, err = encoder.Encode(base64.StdEncoding.EncodeToString(encrypted), gozxing.BarcodeFormat_QR_CODE, 300, 300, nil)
    if err != nil {
-      Goose.Logf(0,"Error encoding challenge: %s", err)
+      Goose.Logf(1,"Error encoding challenge: %s", err)
       return nil, nil, err
    }
 
@@ -529,11 +521,9 @@ func (pk *PkiT) Challenge() ([]byte, []byte, error) {
    ci.BitMatrix = *btmtrx
    err = png.Encode(finalBuf, &ci)
    if err != nil {
-      Goose.Logf(0,"Error imaging challenge: %s", err)
+      Goose.Logf(1,"Error imaging challenge: %s", err)
       return nil, nil, err
    }
-
-   Goose.Logf(0,"challenge: % 2X", challenge)
 
    return challenge, finalBuf.Bytes(), nil
 }
@@ -548,31 +538,33 @@ func (pk *PkiT) QrKeyId(keyId string, challenge []byte) ([]byte, error) {
 
    sigBytes, err = pk.Sign(keyId+string(challenge))
    if err != nil {
-      Goose.Logf(0,"Error signing keyId: %s", err)
+      Goose.Logf(1,"Error signing keyId: %s", err)
       return nil, err
    }
 
    sig = base64.StdEncoding.EncodeToString(sigBytes)
    chall = base64.StdEncoding.EncodeToString(challenge)
 
-   Goose.Logf(0,"keyId: %s", keyId)
-   Goose.Logf(0,"chall: % 2X", challenge)
-   Goose.Logf(0,"sig: % 2X", sigBytes)
-
    encoder = qrcode.NewQRCodeWriter()
    btmtrx, err = encoder.Encode(keyId + ":" + chall + ":" + sig, gozxing.BarcodeFormat_QR_CODE, 300, 300, nil)
    if err != nil {
-      Goose.Logf(0,"Error signing keyId: %s", err)
+      Goose.Logf(1,"Error signing keyId: %s", err)
       return nil, err
    }
 
    finalBuf = bytes.NewBuffer(nil)
    err = png.Encode(finalBuf, btmtrx)
    if err != nil {
-      Goose.Logf(0,"Error signing keyId: %s", err)
+      Goose.Logf(1,"Error signing keyId: %s", err)
       return nil, err
    }
 
    return finalBuf.Bytes(), nil
 }
+
+func (pk *PkiT) Certificate() []byte {
+   return pk.Cert.Raw
+}
+
+
 
